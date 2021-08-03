@@ -1,4 +1,5 @@
 ##############loading required libraries#############
+##These libraries are needed to do all the functions###
 
 library(dplyr)
 library(gmodels)
@@ -14,40 +15,55 @@ library(caret)
 library(neuralnet)
 
 #Starting with loading the data
-
+library(readr)
+master <- read_csv("Data/loandata.csv")
 
 #######EDA with Loan Data##############
+##Summarize all the data###
 
 summary(master)
 
 #from the summary it was very clear that there is an outlier in the age of the lender - the max to 144. lets check that
 
-master %>% filter(age > 100) 
+master %>% filter(age > 100)
+##Here we find the data along with its point, expand to see the rest##
 
 master[which.max(master$age), 8] <- as.numeric(master %>% filter(age < 100) %>% summarise(max(age)))
-
 #in order to keep our data closest to the pattern, we took the next highest value of age and replaced 144 with that 
 
 CrossTable(master$loan_status)
+#This shows us how many loans defaulted and we see most didn't#
 
-#This shows us how many laons defaulted
-
-#Exploring the relationship between loan grade and loan decision
+##Exploring the relationship between loan grade and loan decision##
 
 CrossTable(y = master$loan_status, x = master$grade, prop.r = TRUE, prop.c = FALSE, prop.t = FALSE, prop.chisq = FALSE)
+#Here we see that F and G have higher default but they have lower observations and other reasons##
+#Might have some outliers## 
+
+#We can see the interest rates in F and G now#
+ir_grade <- master %>% group_by(grade, home_ownership) %>% summarize(mean(int_rate, na.rm = T), sd(int_rate, na.rm = T))
+View(ir_grade)
 
 #Similarly looking at other categorical variables and how the impact loan decision
-
 CrossTable(y = master$loan_status, x = master$home_ownership, prop.r = TRUE, prop.c = FALSE, prop.t = FALSE, prop.chisq = FALSE)
 chisq.test(table(master$loan_status, master$home_ownership))
 CrossTable(y = master$loan_status, x = master$emp_cat, prop.r = TRUE, prop.c = FALSE, prop.t = FALSE, prop.chisq = FALSE)
+
+#First we need to clean then perform the next one#
+master_11 <- master %>% filter(ir_cat == "11-Aug") %>% mutate(ir_cat = "8-11")
+master_others <- master %>% filter(ir_cat != "11-Aug")
+master <- rbind(master_11, master_others)
+#Done cleaning now we do#
 CrossTable(y = master$loan_status, x = master$ir_cat, prop.r = TRUE, prop.c = FALSE, prop.t = FALSE, prop.chisq = FALSE)
 
 #Checking the distribution of the loan amount
 
 hist(master$loan_amnt)
+#Checking Scatter Plot of int rate and loan amount#
+ggplot(master, aes(x = int_rate, y = loan_amnt))+ geom_point(alpha=0.4)
+ggplot(master, aes(x = int_rate, y = loan_amnt))+ geom_point(alpha=0.4)+ facet_wrap(~loan_status)
 
-#distribution of loan amount, interest rate, employment lenght, annual income and age for all those who defaulted
+#distribution of loan amount, interest rate, employment length, annual income and age for all those who defaulted
 
 master %>% filter(loan_status == 1) %>% ggplot(aes(loan_amnt)) + geom_histogram()
 master %>% filter(loan_status == 1) %>% ggplot(aes(emp_length)) + geom_histogram()
